@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>やることアプリ テスト仕様書</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; color: #1e293b; font: 11px/1.4 sans-serif; }
+    .heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 10px; }
+    h1 { margin: 0; font-size: 18px; }
+    .note { margin: 5px 0 0; }
+    button { padding: 7px 14px; border: 1px solid #334155; border-radius: 5px; background: #334155; color: white; cursor: pointer; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #94a3b8; padding: 5px 6px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+    th { background: #e2e8f0; }
+    td:first-child, th:first-child { text-align: center; }
+    .result { white-space: nowrap; }
+    .result label { margin-right: 7px; }
+    .result input { margin: 0 2px 0 0; vertical-align: middle; accent-color: #1e293b; }
+    textarea { display: block; width: 100%; min-height: 34px; resize: vertical; border: 1px solid #94a3b8; padding: 4px; font: inherit; overflow: hidden; }
+    .print-note { display: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+    @media print {
+      @page { size: A3 landscape; margin: 10mm; }
+      body { padding: 0; font-size: 9px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .heading button { display: none; }
+      h1 { font-size: 14px; }
+      th, td { padding: 3px 4px; }
+      thead { display: table-header-group; }
+      tr { break-inside: avoid; page-break-inside: avoid; }
+      textarea { display: none; }
+      .print-note { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <div class="heading">
+    <div>
+      <h1>やることアプリ テスト仕様書</h1>
+      <p class="note">対象：http://localhost:8080　開始時：todos は5件　上から順に実施し、最後にテストで登録した1件を削除する。</p>
+    </div>
+    <button type="button" id="print-button">PDFで保存</button>
+  </div>
+  <table>
+    <colgroup><col style="width:5%"><col style="width:20%"><col style="width:15%"><col style="width:25%"><col style="width:10%"><col style="width:25%"></colgroup>
+    <thead><tr><th>番号</th><th>確かめること</th><th>入れる値</th><th>期待する結果</th><th>結果</th><th>備考/NG</th></tr></thead>
+    <tbody id="cases"></tbody>
+  </table>
+  <script>
+    const cases = [
+      ['一覧画面を開く', '/todos', '登録済みの5件が、やること・ジャンル・優先度・期限・状態・操作の順の表に表示される。'],
+      ['一覧の初期表示と表示名を確かめる', '一覧を最初に開く', '期限のある行が期限の近い順に並び、優先度は高・中・低、状態は完了・未完了の言葉で表示される。'],
+      ['新規登録画面を開く', '一覧の「新規登録」', 'やること・メモ・ジャンル・優先度・期限の5欄と「確認する」「一覧へ」が表示され、ジャンルと優先度は未選択になっている。'],
+      ['やることが空のときの入力チェック', 'やること＝空、ほかの必須欄＝選択して「確認する」', '登録画面に留まり、やること欄の下に「やることを入力してください」と表示される。'],
+      ['やることが半角空白だけのときの入力チェック', 'やること＝半角空白だけで「確認する」', '登録画面に留まり、やること欄の下に「やることを入力してください」と表示される。'],
+      ['やることが全角空白だけのときの入力チェック', 'やること＝全角空白だけで「確認する」', '登録画面に留まり、やること欄の下に「やることを入力してください」と表示される。'],
+      ['やることが255文字を超えたときの入力チェック', 'やること＝同じ文字を256文字、ほかの必須欄＝選択', '登録画面に留まり、やること欄の下に「やることは255文字以内で入力してください」と表示される。'],
+      ['メモが255文字を超えたときの入力チェック', 'メモ＝同じ文字を256文字、ほかの必須欄＝入力・選択', '登録画面に留まり、メモ欄の下に「メモは255文字以内で入力してください」と表示される。'],
+      ['ジャンル未選択の入力チェック', 'ジャンル＝未選択、やることと優先度＝入力・選択', '登録画面に留まり、ジャンル欄の下に「ジャンルを選んでください」と表示される。'],
+      ['優先度未選択の入力チェック', '優先度＝未選択、やることとジャンル＝入力・選択', '登録画面に留まり、優先度欄の下に「優先度を選んでください」と表示される。'],
+      ['登録確認画面を開く', 'やること＝照合用20261110、メモ＝空、ジャンル＝プログラミング、優先度＝高、期限＝2026-12-31 →「確認する」', '登録確認画面に5つの値が入力欄ではなく文字で表示され、メモには「（入力なし）」、下には「登録する」「書き直す」が表示される。'],
+      ['登録確認から書き直す', '「書き直す」', '登録画面に戻り、確認前に入力したやること・ジャンル・優先度・期限が欄に残っている。'],
+      ['新しい1件を登録する', '再び「確認する」→「登録する」', '一覧に「照合用20261110」が増えて6件になり、画面のいちばん上に「登録しました」と表示される。'],
+      ['条件を空にして一覧を表示する', '名前＝空、ジャンル＝すべて →「絞り込む」', '絞り込みを行わず、登録済みの6件すべてが一覧に表示される。'],
+      ['名前の一部で検索する', '名前＝照合用、ジャンル＝すべて →「絞り込む」', '名前に「照合用」を含む「照合用20261110」の行が一覧に表示される。'],
+      ['ジャンルで検索する', '名前＝空、ジャンル＝プログラミング →「絞り込む」', 'ジャンルが「プログラミング」と同じ行だけが一覧に表示される。'],
+      ['検索結果が0件の表示を確かめる', '名前＝該当しない語20261110、ジャンル＝すべて →「絞り込む」', '一覧に「まだ1件も登録されていません」と表示される。'],
+      ['期限が近い順に並び替える', '条件を空に戻し「期限が近い順」', '期限のある行が期限の近い順に一覧へ表示される。'],
+      ['期限が遠い順に並び替える', '「期限が遠い順」', '期限のある行が期限の遠い順に一覧へ表示される。'],
+      ['絞り込みのアドレスを開き直す', '/todos?keyword=照合用&category=プログラミング&order=asc を開き直す', '「照合用20261110」の行が、指定した名前・ジャンル・期限が近い順の条件で一覧に表示される。'],
+      ['編集画面を開く', '「照合用20261110」の行の「編集」', '登録した5つの値が入った欄と現在の状態の「完了」チェック欄、および「確認する」「一覧へ」が表示される。'],
+      ['編集画面でも必須入力を確かめる', 'やること＝空 →「確認する」', '編集画面に留まり、やること欄の下に「やることを入力してください」と表示される。'],
+      ['編集確認画面を開く', 'やること＝照合用20261110編集済、優先度＝低、完了＝チェックあり →「確認する」', '編集確認画面に変更後の値が入力欄ではなく文字で表示され、下に「保存する」「書き直す」が表示される。'],
+      ['編集確認から書き直す', '「書き直す」', '編集画面に戻り、変更したやること・優先度・完了の値が欄に残っている。'],
+      ['編集した1件を保存する', '再び「確認する」→「保存する」', '一覧の対象行に「照合用20261110編集済」・優先度「低」・状態「完了」が表示され、画面のいちばん上に「保存しました」と表示される。'],
+      ['削除確認画面を開く', '編集した行の「削除」', '削除確認画面に対象のやること・ジャンル・期限が入力欄ではなく文字で表示され、下に「消す」「やめる」が表示される。'],
+      ['削除をやめる', '「やめる」', '一覧に戻り、「照合用20261110編集済」の行が残っている。'],
+      ['存在しない番号の編集画面を開く', '一覧にない番号の /todos/{id}/edit', '一覧に戻り、画面のいちばん上に「見つかりませんでした」と表示される。'],
+      ['存在しない番号の削除確認画面を開く', '一覧にない番号の /todos/{id}/delete', '一覧に戻り、画面のいちばん上に「見つかりませんでした」と表示される。'],
+      ['テストで増やした1件を削除して5件に戻す', '「照合用20261110編集済」の行の「削除」→「消す」', '一覧からテストで増やした行が消えて5件に戻り、画面のいちばん上に「削除しました」と表示される。']
+    ];
+
+    const tbody = document.getElementById('cases');
+    cases.forEach(([check, value, expected], index) => {
+      const row = document.createElement('tr');
+      [String(index + 1), check, value, expected].forEach(content => {
+        const cell = document.createElement('td');
+        cell.textContent = content;
+        row.appendChild(cell);
+      });
+      const result = document.createElement('td');
+      result.className = 'result';
+      ['OK', 'NG'].forEach(choice => {
+        const label = document.createElement('label');
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = `result-${index + 1}`;
+        radio.value = choice;
+        label.append(radio, choice);
+        result.appendChild(label);
+      });
+      row.appendChild(result);
+      const remarks = document.createElement('td');
+      const textarea = document.createElement('textarea');
+      textarea.setAttribute('aria-label', `${index + 1}番の備考/NG`);
+      const printNote = document.createElement('div');
+      printNote.className = 'print-note';
+      textarea.addEventListener('input', syncNotes);
+      remarks.append(textarea, printNote);
+      row.appendChild(remarks);
+      tbody.appendChild(row);
+    });
+
+    function syncNotes() {
+      document.querySelectorAll('textarea').forEach(textarea => {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight + 2}px`;
+        textarea.nextElementSibling.textContent = textarea.value;
+      });
+    }
+    window.addEventListener('beforeprint', syncNotes);
+    document.getElementById('print-button').addEventListener('click', () => {
+      syncNotes();
+      window.print();
+    });
+  </script>
+</body>
+</html>
